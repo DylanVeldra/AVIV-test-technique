@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "strict": true,
+    "outDir": "dist",
+    "target": "ES2021",
+    "baseUrl": "./pricemap",
+    "types": ["node"],
+    "lib": ["ES2021", "esnext.asynciterable"]
+  },
+  "exclude": [
+    "**/*.e2e.ts",
+    "**/*.spec.ts",
+    "**/*.mock.ts",
+    "**/*.test.ts",
+    "jest.config.ts",
+    "**/*.test-wrapper.ts"
+  ],
+  "include": ["**/*.ts"]
+}

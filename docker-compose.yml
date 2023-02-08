@@ -1,0 +1,88 @@
+version: "3.4"
+
+services:
+  listingapi:
+    image: ghcr.io/meilleursagents/backend-technical-test/listingapi:latest
+    user: "listingapi:listingapi"
+    volumes:
+      - ./listingapi:/home/listingapi/app:rw
+    command: ["flask", "run", "-h", "0.0.0.0"]
+    ports:
+      - "8181:5000"
+    environment:
+      FLASK_DEBUG: 1
+      FLASK_APP: "listingapi.app"
+
+  pricemap-python:
+    image: ghcr.io/meilleursagents/backend-technical-test/pricemap-python:latest
+    user: "pricemap:pricemap"
+    volumes:
+      - ./pricemap-python:/home/pricemap/app:rw
+    command:
+      [
+        "/home/pricemap/wait-for-postgres.sh",
+        "db:5432",
+        "--",
+        "flask",
+        "run",
+        "-h",
+        "0.0.0.0",
+      ]
+    ports:
+      - "8080:5000"
+    depends_on:
+      - db
+      - listingapi
+    environment:
+      PGHOST: db
+      PGDATABASE: pricemap
+      PGUSER: pricemap
+      PGPASSWORD: pricemap
+      FLASK_DEBUG: 1
+      FLASK_APP: "pricemap.app"
+
+  pricemap-typescript:
+    image: pricemap-typescript:latest
+    build:
+      context: ./pricemap-typescript/
+      dockerfile: Dockerfile
+    # user: "pricemap:pricemap"
+    volumes:
+      - ./pricemap-typescript/src:/home/pricemap/app/src:rw
+      - ./pricemap-typescript/static:/home/pricemap/app/static:rw
+    command: ["npm", "run", "watch"]
+    ports:
+      - "8282:5000"
+      - "9222:9222"
+    depends_on:
+      - db
+      - listingapi
+    environment:
+      PGHOST: db
+      PGDATABASE: pricemap
+      PGUSER: pricemap
+      PGPASSWORD: pricemap
+      LISTING_API_URL: http://listingapi:5000
+
+  db:
+    image: "mdillon/postgis:11-alpine"
+    volumes:
+      - type: volume
+        source: pg-data
+        target: /var/lib/postgresql/data
+      - ./pricemap-python/docker/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "pricemap"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    environment:
+      POSTGRES_DB: pricemap
+      POSTGRES_USER: pricemap
+      POSTGRES_PASSWORD: pricemap
+
+volumes:
+  pg-data:
